@@ -26,8 +26,10 @@ the agent wrote). Judges that read the run record are "not recorded" for a run w
 
 Turn the approved requirements from [scope](scope.md) into explicit criteria. For each, record
 its source and revision, applicable paths and conditions, the evidence needed and the evaluator
-that reads it. Use the instructions available at the task's start or in its declared setup;
-resolve conflicting or inapplicable guidance before freezing.
+that reads it. Use the approved requirements that apply to the code at the task's start commit,
+wherever they are written (the start commit's files, the setup the team runs, contributing docs);
+resolve conflicting or inapplicable guidance before freezing. Every setup variant of a task is
+graded on the same criteria ([comparing](comparing.md), *Setups*).
 
 - **Output requirements** go to code checks when exact, or `review-ready` when they need
   judgment about the diff. For example, whether the delivered code passes lint is a code check.
@@ -56,17 +58,29 @@ the repository and its test setup.
   paths fall inside. `new_files_ok` lists where new files are welcome (new test files).
 - `restore`: files that can steer a test run but are often changed for good reasons
   (`pyproject.toml`, `setup.cfg`, `package.json`): put back before any command runs, never held
-  against the agent.
+  against the agent. Lockfiles and vendored dependencies steer a run too: restore them unless a
+  correct fix may need a dependency change, and then leave the change to `review-ready`.
+  Restoring a lockfile does not undo packages the agent already installed, so commands that
+  depend on it install from it first. A large vendored folder makes every task's snapshot large.
 - `allowed_changes`: protected or restored files the correct fix itself must change. Health shows
   the need: the oracle fails.
-- `ignore_changes`: what the image build or test run leaves untracked.
+- `ignore_changes`: what the image build or test run leaves untracked. It does not exempt
+  `protected` or `restore` paths (`relai/docs/files.md`).
 
 Make material restrictions available in the task request without revealing the answer. Protecting
 existing tests while allowing new tests is a policy choice, not an inherent definition of a correct
-fix. When the repository asks contributors to extend existing test files (its instruction files
-or contributing docs say so), protecting them scores the expected change against the agent: put
-the existing test files in `restore` instead, and install the hidden tests at a new protected
-path no existing file uses (such as `tests/relai-hidden/`). Confirm that constraints allow legitimate solutions: the requirement-consistent alternative from
+fix. When the repository's developers add tests by editing existing test files (its fixes do,
+or its guidance asks for it), protecting those files scores good work against the agent: put the
+existing test files in `restore` instead. Decide this once per repository at scope
+([scope](scope.md), *Find out first*) and record it in `decisions.md`, so `tests-untouched` means
+one thing across that repository's tasks. The verifier puts restored files back before each of
+its commands, except files under `allowed_changes`, so a weakened test cannot change a score;
+`review-ready` sees the weakening in the diff, and `tests-untouched` then covers only CI and
+runner files (say so in the task README). Hidden tests must still match `protected`: install
+them at a new path no existing file uses (such as `tests/relai-hidden/`) and list it there. A
+restored file that the fix also edits goes in `allowed_changes` only when `solve.sh` applies that
+edit. Confirm that
+constraints allow legitimate solutions: the requirement-consistent alternative from
 [validation](task-format.md#validation) must pass with every protected and restored file in place.
 If it does not, loosen the constraint (or move the file to `restore`) before freezing. Changing the
 policy later changes the evaluation and follows the *Frozen tests* rule.
@@ -80,6 +94,19 @@ the defenses hold only for files the task lists, so list them. It is not a sandb
 allows, run the agent as a non-root user (`[agent].user`), and then set `[verifier] user = "root"`:
 Harbor does not fall back to root, and a non-root verifier records no reward (`check_task.py`
 checks it).
+
+Two more paths reach the verifier's commands from outside the listed files:
+
+- **Toolchain configuration.** In the workspace (a project `.npmrc`, `.cargo/config.toml`,
+  `go.work`), list it under `restore`. In the home folder (Go's `go env -w`, a user `.npmrc` or
+  `pip.conf`), it reaches the verifier when the agent runs as root or shares its home: have the
+  hidden-test, suite and build commands set it aside, for example `GOENV=off`,
+  `NPM_CONFIG_USERCONFIG=/dev/null` or `PIP_CONFIG_FILE=/dev/null`, and confirm with the
+  real-fix check that they still pass.
+- **Running as root.** The verifier runs as root, which passes every file-permission check, so a
+  test about permissions or the user's identity passes whatever the code does. Run such a test
+  as a non-root user (`runuser`, `setpriv` or `su`, whichever the image has; create the user in
+  the Dockerfile when the agent runs as root), or record that it checks nothing.
 
 `params.json` keys are in `relai/docs/files.md`; expected values live there, never in code.
 

@@ -236,6 +236,47 @@ class CodingEvalsTest(unittest.TestCase):
         self.assertNotEqual(ran.returncode, 0)
         self.assertIn("run verify.py isolated", ran.stdout)
 
+    def test_ignore_changes_over_protected_or_restored_paths_is_a_warning(self):
+        task = fill_task(self.project, self.src, self.bundle())
+        params = json.loads((task / "tests" / "params.json").read_text())
+        params["ignore_changes"] = ["build/**", "*.log"]  # outside protected and restore
+        (task / "tests" / "params.json").write_text(json.dumps(params))
+        ran = self.check(task)
+        self.assertEqual(ran.returncode, 0, ran.stdout)
+        self.assertNotIn("never exempts", ran.stdout)
+        # what a build might write: inside a tracked folder, under it by wildcard, or a tracked file by wildcard
+        for ignored in (["tests/build/out.bin"], ["**/*.bin"], ["pyproject.toml"], ["*.toml"]):
+            params["ignore_changes"] = ignored
+            (task / "tests" / "params.json").write_text(json.dumps(params))
+            ran = self.check(task)
+            self.assertEqual(ran.returncode, 0, ran.stdout)  # a warning: the task still runs
+            self.assertIn("never exempts", ran.stdout, ignored)
+
+    def test_check_task_matches_paths_as_the_verifier_does(self):
+        import importlib.util
+        def load(name: str, path: Path):
+            spec = importlib.util.spec_from_file_location(name, path)
+            module = importlib.util.module_from_spec(spec)
+            sys.path.insert(0, str(path.parent))
+            try:
+                spec.loader.exec_module(module)
+            finally:
+                sys.path.remove(str(path.parent))
+            return module
+        checker = load("relai_check_task", TEMPLATE / "bin" / "check_task.py")
+        verifier = load("relai_coding_checks", VERIFIER / "coding_checks.py")
+        patterns = ["tests/**", "**/conftest.py", "**/*.bin", "a?c/*.go", "script/build", "**", "src/**/x_test.go"]
+        paths = ["tests/a.py", "tests/b/c.bin", "conftest.py", "pkg/conftest.py", "abc/x.go", "abc/d/x.go",
+                 "script/build", "src/x_test.go", "src/p/q/x_test.go", "a.bin"]
+        for pattern in patterns:
+            for path in paths:
+                self.assertEqual(bool(checker.glob_regex(pattern).match(path)),
+                                 bool(verifier.glob_regex(pattern).match(path)), (pattern, path))
+        # an eval project inside a file-sync client's folder gets a note
+        self.assertEqual(checker.synced_folder(Path("/Users/me/Library/CloudStorage/Dropbox/work/relai")), "CloudStorage")
+        self.assertEqual(checker.synced_folder(Path("/home/me/Dropbox (Team)/relai")), "Dropbox (Team)")
+        self.assertIsNone(checker.synced_folder(Path("/home/me/src/dropbox-clone/relai")))
+
     def test_an_unset_pass_mark_is_a_warning_not_an_error(self):
         task = fill_task(self.project, self.src, self.bundle())
         toml = (self.project.relai / "relai.toml").read_text().replace("[scoring]\npass_mark = 0.8\n", "")
@@ -391,6 +432,37 @@ class CodingEvalsTest(unittest.TestCase):
                          ["tests/test_calc.py", "tests/test_new.py", "tests/test_é.py"])
         self.assertIn("notes.txt", result["diff"])
 
+
+    @unittest.skipUnless(have_pytest(), "pytest is not installed on this host")
+    def test_extending_a_restored_test_file_costs_nothing(self):
+        # Existing tests in restore (checks.md: the repository's developers add tests by editing existing
+        # test files), and the hidden tests at a new protected path in the same folder.
+        bundle = self.bundle()
+        task = fill_task(self.project, self.src, bundle)
+        params = json.loads((task / "tests" / "params.json").read_text())
+        params["hidden_tests"]["files"] = {"hidden/test_mean.py": "tests/test_mean_hidden.py"}
+        params["hidden_tests"]["command"] = params["hidden_tests"]["command"].replace("test_mean.py", "test_mean_hidden.py")
+        params["protected"] = ["tests/test_mean_hidden.py", "**/conftest.py", "**/pytest.ini", "**/tox.ini"]
+        params["restore"] = ["tests/**", "pyproject.toml", "setup.cfg"]
+        params["new_files_ok"] = []
+        (task / "tests" / "params.json").write_text(json.dumps(params))
+        ran = protect(self.src["repo"], self.src["start"], task)
+        self.assertEqual(ran.returncode, 0, ran.stderr + ran.stdout)
+        ws = self.workspace(bundle)
+        sh(ws, "git", "apply", str(task / "solution" / "fix.patch"))
+        with open(ws / "tests" / "test_calc.py", "a") as f:  # the agent adds a regression case to an existing file
+            f.write("\n\ndef test_mean_of_empty():\n    from calc import mean\n    assert mean([]) == 0.0\n")
+        result = self.verify(task, ws)
+        for ev in ("fixes-the-bug", "no-regressions", "tests-untouched"):
+            self.assertEqual(result["reward"][ev], 1.0, result["feedback"].get(ev))
+        self.assertIn("tests/test_calc.py", result["facts"]["restored_before_running"])
+        self.assertIn("test_mean_of_empty", result["diff"])  # judges still see the added test
+        weakened = self.workspace(bundle)  # breaks add() and edits its test to match: restoring catches it
+        (weakened / "calc.py").write_text(CALC_FIXED.replace("return a + b", "return a - b"))
+        (weakened / "tests" / "test_calc.py").write_text(TEST_CALC.replace("== 5", "== -1"))
+        result = self.verify(task, weakened)
+        self.assertEqual(result["reward"]["no-regressions"], 0.0)
+        self.assertEqual(result["reward"]["tests-untouched"], 1.0)  # covers only CI and runner files here
 
     @unittest.skipUnless(have_pytest(), "pytest is not installed on this host")
     def test_a_planted_conftest_cannot_make_the_tests_pass_even_when_hidden_from_git(self):
@@ -726,6 +798,70 @@ class SummarizeWithoutTrajectoryTest(unittest.TestCase):
         finally:
             project.close()
 
+
+    def test_solved_rate_is_reported_apart_from_the_mean_with_time_and_cost(self):
+        project = Repo()
+        try:
+            from helpers import harbor_trial
+            task = project.task("solved", toml=None)
+            toml = (task / "task.toml").read_text().replace('behavior = "Looks up the order before answering."',
+                                                           'behavior = "x"\nagent_neutral = true')
+            toml = toml.replace(
+                '[[metadata.relai.evaluators]]\nid = "explains"\ntype = "judge"\nmethod = "semantic"\n'
+                'criterion = "Explains the order status."\nrubric = "tests/judge.md"\nmin_score = 0.0\nmax_score = 1.0\n',
+                '[[metadata.relai.evaluators]]\nid = "style"\ntype = "code"\nmethod = "exact"\n'
+                'criterion = "Follows the style guide."\nmin_score = 0.0\nmax_score = 1.0\n')
+            (task / "task.toml").write_text(toml + '\n[metadata.relai.coding]\nprimary = "looks-up-order"\n')
+            job = harbor_job(project.root / "runs", "job", 3)
+            for name, minutes in (("a", 4), ("b", 6)):
+                trial = harbor_trial(job, name, task, {"looks-up-order": 1.0, "style": 0.5},
+                                     feedback={"looks-up-order": "ok", "style": "half"}, with_trajectory=False)
+                result = json.loads((trial / "result.json").read_text())
+                result.update(started_at="2026-11-16T10:00:00+00:00", finished_at=f"2026-11-16T10:{minutes + 3:02d}:00+00:00",
+                              environment_setup={"started_at": "2026-11-16T10:00:00+00:00",
+                                                 "finished_at": "2026-11-16T10:02:00+00:00"},
+                              agent_execution={"started_at": "2026-11-16T10:02:00+00:00",
+                                               "finished_at": f"2026-11-16T10:{minutes + 2:02d}:00+00:00"})
+                (trial / "result.json").write_text(json.dumps(result))
+            # never reached its model: a runtime failure, left out of the solved rate
+            harbor_trial(job, "c", task, {"looks-up-order": 0.0, "style": 0.0}, exception="AuthError",
+                         feedback={"looks-up-order": "x", "style": "x"}, with_trajectory=False,
+                         usage={"n_input_tokens": 0, "n_output_tokens": 0, "cost_usd": 0.0})
+            out = project.run("summarize.py", str(job), "--json", str(project.root / "s.json"))
+            run = json.loads((project.root / "s.json").read_text())["run"]
+            test = run["tests"]["tests/solved"]
+            self.assertEqual(test["solved"], {"evaluator": "looks-up-order", "solved": 2, "scored": 2, "rate": 1.0,
+                                              "attempts": 3, "cost_reported": 3, "cost_usd": 0.02})
+            self.assertEqual(test["mean"], 0.75)
+            self.assertEqual(run["solved"]["solved"], 2)
+            self.assertAlmostEqual(run["solved"]["cost_per_solved_task"], 0.01)  # $0.02 over 3 attempts, 2 solved
+            self.assertEqual(run["timing"]["agent_execution"]["mean"], 300.0)
+            self.assertEqual(run["timing"]["environment_setup"]["n"], 2)
+            self.assertIn("Solved (main check at full marks): 2 of 2 attempts", out.stdout)
+            self.assertIn("mean 0.75 (2/3 scored), solved 2/2", out.stdout)
+            self.assertIn("agent 5m00s (6m00s)", out.stdout)
+            self.assertIn("Agent cost per solved task: $0.0100", out.stdout)
+            # the paired comparison reports solved counts beside the means
+            out = project.run("summarize.py", str(job), "--baseline", str(job))
+            self.assertIn("paired over 1 coding test(s): baseline 2 of 2 attempts, candidate 2 of 2", out.stdout)
+            # a non-coding test stays out of the solved rate and its cost; a main check that errored is not
+            # counted as solved or unsolved; an attempt without a reported cost stops the cost per solved task
+            plain = project.task("plain")
+            harbor_trial(job, "d", plain, {"looks-up-order": 1.0}, feedback={"looks-up-order": "ok"},
+                         judges={"explains": {"score": 1.0, "feedback": "ok"}}, usage={"cost_usd": 5.0})
+            broken = harbor_trial(job, "e", task, {"style": 1.0}, feedback={"style": "ok"}, with_trajectory=False)
+            (broken / "verifier" / "errors.json").write_text(json.dumps({"looks-up-order": "hidden tests crashed"}))
+            harbor_trial(job, "f", task, {"looks-up-order": 0.0, "style": 1.0}, feedback={"looks-up-order": "x", "style": "ok"},
+                         with_trajectory=False, usage={"n_input_tokens": 5, "n_output_tokens": 5})
+            out = project.run("summarize.py", str(job), "--json", str(project.root / "s.json"))
+            run = json.loads((project.root / "s.json").read_text())["run"]
+            self.assertEqual(run["tests"]["tests/solved"]["solved"]["scored"], 3)  # a, b and f; e errored
+            self.assertIsNone(run["tests"]["tests/plain"]["solved"])
+            self.assertEqual(run["solved"]["tests"], 1)
+            self.assertIsNone(run["solved"]["cost_per_solved_task"])
+            self.assertIn("not computed (cost reported for 4 of 5 attempts on coding tests", out.stdout)
+        finally:
+            project.close()
 
 class JudgeInputsTest(unittest.TestCase):
     def test_inputs_are_read_from_the_trial_and_missing_ones_are_errors(self):

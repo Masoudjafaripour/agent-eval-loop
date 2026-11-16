@@ -27,16 +27,19 @@ Score the judges, then `summarize.py` each run; when comparing, pass the baselin
 
 ## Reading the results
 
-- **Solved** is the primary evaluator at full marks (its per-attempt scores in
-  `summarize.py --json`), per task, averaged over attempts; the mean over every recorded check
-  goes beside it, and the pass rule once `[scoring].pass_mark` is set. An agent can solve more and pass less (it fixes the bug but
+- **Solved** is the primary evaluator at full marks, per task, averaged over attempts;
+  `summarize.py` prints it per test and overall, apart from the mean over every recorded check,
+  which goes beside it, and the pass rule once `[scoring].pass_mark` is set. An agent can solve more and pass less (it fixes the bug but
   edits tests or skips verification). Show scored/attempted counts and missing-result reasons;
   unknown scores are not failures. Rerun missing evidence when useful and authorized, or limit
   the conclusion to what was recorded.
 - **Paired, task by task**, when comparing. Compare the same tasks for both sides. A difference within the run's
   spread, or on few tasks, supports no claim either way.
 - **Per check**: how often each behavior held. Checks with errors were not recorded for that
-  agent.
+  agent. Report a check whose meaning differs between tasks separately for each meaning:
+  `tests-untouched` covers existing tests where they are `protected`, and only CI and runner
+  files where they are restored; group tasks by whether `params.json` lists the existing tests
+  under `restore` ([checks](checks.md)).
 - **By kind of work**: suggest routing only when a difference holds on several tasks of that kind.
 - **Tasks that separate versions** are the most informative; review the ones nobody solves for
   fairness.
@@ -50,8 +53,10 @@ Score the judges, then `summarize.py` each run; when comparing, pass the baselin
   judgments to what the trajectory supports ([safe process](checks.md#safe-process-shared-evaluator)).
 - **Contamination**: report separately the tasks whose fix was public before a model's training
   cutoff.
-- Cost (or plan usage) per solved task and time per trial go beside the scores. State units and
-  distinguish agent time from feedback overhead where measured. Preserve per-run setup/evaluator
+- Cost (or plan usage) per solved task and time per trial go beside the scores; `summarize.py`
+  prints both from the run records, with environment setup (which includes image builds) apart
+  from the agent's time. State units and distinguish agent time from feedback overhead where
+  measured. Preserve per-run setup/evaluator
   identity and available contents/revisions; do not infer a subscription bill from recorded USD
   or causation from a sequence of setup edits alone.
 
@@ -60,8 +65,9 @@ Score the judges, then `summarize.py` each run; when comparing, pass the baselin
 Only when the user wants to compare different coding agents. The tasks need no change; what
 differs between agents is what they read, what is recorded and what they cost.
 
-- **What each agent reads.** Agents read different instruction files (Claude Code `CLAUDE.md` and
-  `.claude/`, Codex and many others `AGENTS.md`). Each task's README lists the agent instruction
+- **What each agent reads.** Agents read different instruction files (such as `CLAUDE.md` and
+  `.claude/`, or `AGENTS.md`), and which ones depends on the agent and its version (*Setups*).
+  Each task's README lists the agent instruction
   files its workspace already holds at the start commit; when they favor some agents, say so and
   offer a bare variant that removes them, or matched setups. Compare either bare against bare, or
   each agent with its **matched setup**: the same team guidance written into each agent's own
@@ -95,15 +101,37 @@ the setup declaration/manifest and its snapshot differ as intended. A bare varia
 setup; when the start commit already holds guidance, the variant also removes it from the
 workspace and from every commit in its history (rewritten as in [task-format](task-format.md)
 step 2, its new start recorded), since the agent can read it from git. Before running a variant,
-confirm from the agent version's documentation or a trial's trajectory that it loads the
-variant's files: agents differ, and one that reads only its own file (such as `CLAUDE.md`) reaches
-`AGENTS.md` or shared skills only through an import or link. A variant the agent never reads
-measures nothing. Check these differences before comparing, run the same agent and attempts, and compare
-task by task.
+confirm from a trial that the agent loaded the variant's files, and that the bare variant loaded
+none: agents differ, and one may reach a file only through an import or link. When the run
+record does not show which files loaded, check the agent's own log where it keeps one (the
+[Harbor notes](../../eval/references/harbor-notes.md)). A variant the agent never reads measures
+nothing. Check these differences before comparing,
+run the same agent and attempts, and compare task by task.
+
+Grade every setup of a task on the same criteria, settled before freezing (a later rubric change
+follows the *Frozen tests* rule). The criteria are the team's approved requirements that apply to
+the code at the task's start commit ([checks](checks.md#repository-requirements)), wherever they
+are written. A requirement that one setup's instruction file states (run the linter) also grades
+the bare variant, since whether the file helps the agent meet it is what the comparison
+measures. A rule that does not apply to the code at the start commit (one the start commit's own
+guidance contradicts, or about code it does not have yet), or that the team did not approve as a
+requirement, grades no setup. Report judge scores apart from the solved rate, and say that a
+judge reading the trajectory may see which setup ran (the agent names or quotes its instruction
+file). When an instruction file tells agents to stop or decline (for example, on
+unsolicited contributions), keep the request identical across variants and report any stop as
+its own finding.
+
+Report per setup, beside the solved rate, the trajectory criteria for process requirements
+(running the tests, linter or build), "not recorded" for runs without a run record. A task every
+setup solves separates nothing on the solved rate. Fix the task set and attempts per task before
+seeing the compared setups' results; if the results are too noisy to support a conclusion, add
+the same attempts to every task and setup, and report that attempts were extended after seeing
+results.
 
 **Which parts help.** One variant per part left out (a section of an instruction file, a skill, a
 hook, an MCP server). Trials grow as parts × tasks × attempts, so run it on the tasks that
-separated setups before, and show the cost first. Per part report helps, hurts, or no measurable
+separated setups before (a subset chosen from earlier results: report it as selection evidence,
+as in *Improving a setup*), and show the cost first. Per part report helps, hurts, or no measurable
 effect at this sample size.
 
 ## Improving a setup
