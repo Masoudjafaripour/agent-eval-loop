@@ -42,6 +42,36 @@ Questions wait for a natural decision point: the end of `discover`; the start of
 
 ## Check tests and graders
 
+Each eval passes these checks before it counts. Who approves each step, you or an independent
+review, follows the agreement above.
+
+- **Purpose and grounded scenarios.** Before consequential selection, RELAI establishes the
+  intended decision, coverage/difficulty and relevant outcome priorities, reusing existing
+  answers. Each proposal names its source and behavior; failure-based or difficult probes also
+  state their mechanism and a shortcut that skips it. Representative cases may be easy.
+- **Scenario review** (application-agent evals). Before you see the scenarios, a reviewer with
+  fresh context checks that the answer cannot be read off the input or starting data, that the
+  scenario supports its coverage claims and agreed purpose, that one outcome is clearly right,
+  and that the behavior leaves evidence a check can read. RELAI fixes what keeps the scenario's intent and
+  brings the rest to you with a recommended answer.
+- **Passing and failing controls.** Validate graders in the selected environment. A reference
+  solution scores full marks on code checks (Harbor's oracle when used); doing nothing fails
+  checks requiring action (Harbor's nop), but may pass a prohibition. Use an actual violation for
+  that check, and another correct solution where one exists. Preview judges on their declared
+  evidence too. Scripted controls need no model; judges and simulated users may call one.
+  Investigate unexpected control results before freezing.
+- **Grader preview.** You see each check's scores on passing, failing and empty runs, on recorded
+  traces that fit, and on a shortcut skipping required behavior or a claimed risk trigger,
+  which must fail the affected check. RELAI repairs unsupported coverage claims or scenarios
+  before freezing; a cheap correct solution is valid.
+- **Test review.** A reviewer that did not build the eval checks each one before it is frozen:
+  it measures the stated behavior, holds no answer in its input, can fail fairly, uses code for
+  facts and judges for meaning, gives useful feedback and stays faithful to its source.
+- **Freeze and pilot.** Frozen evals are fingerprinted; later changes need a recorded reason and
+  a fresh review. A paid pilot confirms the agent runs and every check scores before larger runs.
+
+Across the work:
+
 - Evals are frozen before comparison, with fresh-context reviews of the harness, evals and changes.
 - Measurement effort is chosen for the decision; "too few attempts to tell" is a valid result.
 - Optional held-out evals can be scored without reading their contents while improving the agent.

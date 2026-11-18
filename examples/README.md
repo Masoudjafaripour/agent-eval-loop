@@ -13,5 +13,6 @@ the relevant guarantee and verify it with focused checks. Each example is standa
 | `judge.py` | `relai/bin/` | API judge: scores each trial's judge evaluators on the host (`--self-test` shows a judge can fail) |
 | `triage.py` | `relai/bin/`, with `judge.py` | Cheap-model triage of a large trace set (see [trace triage](../skills/discover/references/trace-triage.md)) |
 | `evaluate.py` | a task's `tests/` | Helper that writes the verifier's reward, feedback and error files |
+| `mcp_service.py` | a sidecar folder in an agent-neutral task's `environment/` | Serves a task's mock tools over MCP from `tools.json`, handlers and starting state; journals every call for the verifier |
 
 `judge.py`, `native_runner.py` and `triage.py` import `_common.py`, so they run from `relai/bin/`.

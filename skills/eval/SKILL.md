@@ -1,6 +1,6 @@
 ---
 name: eval
-description: Build and run evaluations for an AI agent or LLM application, including harnesses, failure-based tests, benchmarks and shared evaluators. Also analyze evaluation coverage or design scenarios without requiring implementation or execution. Repair broken tests or mock unreachable dependencies. Use improve for changing the agent or comparing changes; use coding-evals for agent-neutral coding tasks, including agents developed here.
+description: Build and run evaluations for an AI agent or LLM application, including harnesses, failure-based tests, benchmarks and shared evaluators. Also build agent-neutral tests for an agreed set of agents or compatibility requirements, adapting service interfaces and runners to the use case. Analyze evaluation coverage or design scenarios without requiring implementation or execution. Repair broken tests or mock unreachable dependencies. Use improve for changing the agent or comparing changes; use coding-evals for agent-neutral coding tasks, including agents developed here.
 ---
 
 # Build and run evals
@@ -25,6 +25,10 @@ Useful discoveries can update existing records without reproducing a wiki or boa
 
 ## Choose the work
 
+Apply the shared [purpose guidance](../start/template/README.md#establish-the-purpose) before
+selecting scenarios or designing measurements, for both agent-specific and agent-neutral work.
+Comparison setup alone does not establish the user's intended decision or outcome priorities.
+
 Apply the methods relevant to the requested outcome, including analysis and scenario design.
 Build and Run describe implementation and execution work; their setup, approvals and completion
 criteria apply when that work is requested. Designing or recommending tests does not itself
@@ -35,6 +39,11 @@ authorize building or running them.
 - **Run** - run selected frozen tests, score them and report where the agent stands
   ([measure](references/measure.md); its *Done when* applies). On a benchmark, follow
   [benchmarks](references/benchmarks.md). To compare runs before and after a change, use the `improve` skill.
+- **Agent-neutral** - shared tasks for selected agents or stated compatibility requirements.
+  Establish the interaction and evidence boundary before scenarios; adapt suitable existing
+  infrastructure, or recommend Harbor with task services over MCP
+  ([agent-neutral](references/agent-neutral.md); its *Done when* replaces the harness requirement
+  below). Ask which mode fits when the request could mean either.
 
 ## Done when (build)
 
@@ -46,10 +55,13 @@ examples, a recoverable reviewed test version before real trials, and traceable 
 filenames are not required.
 
 - **Harness ready** (first time only, [harness](references/harness.md); not needed when the only tests are
-  a wrapped benchmark, whose own runner runs the agent).
-- **Scenarios approved:** the user, or an independent reviewer when the approval is delegated
-  (by an agreement or a recorded choice in `decisions.md`),
-  approved the scenario table below.
+  a wrapped benchmark, whose own runner runs the agent, or agent-neutral tests whose selected
+  integration already meets the execution guarantees).
+- **Scenarios reviewed and approved:** a fresh scenario review
+  ([review-scenarios](references/review-scenarios.md)) checked the proposals before anything was
+  built, and you resolved its findings as *Approve the scenarios* below describes. Then the user,
+  or an independent reviewer when the approval is delegated (by an agreement or a recorded choice
+  in `decisions.md`), approved the scenario table below.
 - Each test is a task under `relai/tests/<id>/` (or a benchmark row) meeting
   `relai/docs/files.md`, with a `README.md` stating behavior, scenario, risk probed and each
   evaluator; `check_task.py` passes, plus `--verifier` for Harbor or synthetic
@@ -71,8 +83,9 @@ filenames are not required.
 - Keep tests focused; a combined scenario must exercise each behavior with distinguishable
   passing/failing criteria. Extend an existing test rather than near-duplicating it; a frozen test
   changes only under the *Frozen tests* rule.
-- Hard but realistic: real data instances and the ambiguity and competing cues that make the
-  behavior hard. When using a simulated user, its instructions hold only that user's goal and knowledge.
+- Match realism and difficulty to the agreed purpose. Representative cases can be easy;
+  difficult probes preserve realistic ambiguity, competing cues and the claimed mechanism.
+  When using a simulated user, its instructions hold only that user's goal and knowledge.
   Never put the answer, a diagnosis or a hint in the agent's input.
 - Exact criteria are code, meaning is a judge, each criterion its own evaluator; expected values
   live in `tests/params.json`, not in evaluator code ([test-design](references/test-design.md)).
@@ -84,20 +97,23 @@ filenames are not required.
   count alone: many unique, issue-specific tests are not a useful random split.
 - A failure caused by the trial itself (a refused action, a broken harness, a killed container)
   is inconclusive, not evidence about the agent; fix the probe.
-- **Where tests come from.** Choose sources relevant to the request: runs the user's feedback judged wrong
-  (replay the run, [test-design](references/test-design.md)); open risks; coverage gaps and co-occurring
-  weak signals from a triage (`relai/work/discover/<ingest-id>/lanes.json`); requirements no test
-  covers; and harder or combined versions of passing tests ([hardening](references/hardening.md), always as
-  new tests).
+- **Where tests come from.** Choose sources for the user's decision: traces and feedback,
+  incidents, requirements and domain knowledge, open risks, coverage gaps and co-occurring weak
+  signals, public issues and discussions, licensed requests or benchmarks, and harder or combined
+  passing tests ([hardening](references/hardening.md), always as new tests). Prefer relevant
+  observed evidence; fill gaps with labeled synthetic scenarios. Record provenance, authorization
+  and uncertainty. An unresolved report is a lead, not proof of a current failure or difficulty.
+  Preserve the source's mechanism when reconstructing a case ([test-design](references/test-design.md)).
 - Specialized cases: a benchmark ([benchmarks](references/benchmarks.md)), a criterion shared across tests or
   an evaluator to repair ([shared-evaluators](references/shared-evaluators.md)), a dependency trials cannot reach or
   must not call ([mocks](references/mocks.md)).
 
 ## Ask the user
 
-Plan questions at the start, at scenario approval and at the grader preview (or once for both,
-when the user chose one sitting below). Blocking ambiguities follow the
-[shared question timing](../start/template/README.md#working-with-the-user). Skip any
+Use the start, scenario approval and grader preview as the usual build checkpoints (or combine
+approvals when the user chose one sitting below). Consequential blockers follow the
+[shared question timing](../start/template/README.md#working-with-the-user); continue independent
+work. Skip any
 question that the request, `relai/decisions.md`, the wiki or an agreement already answers. At the
 start, ask together only what is still open:
 
@@ -105,9 +121,15 @@ start, ask together only what is still open:
   run or benchmark: run the `discover` skill first (recommend this, more strongly when traces of
   real runs exist), build from risks read in the code now ([test-design](references/test-design.md),
   *Hard cases*), or test one behavior the user names.
-- **What the results will decide**, when not evident: catching regressions before merge, gating
-  a release, comparing models or prompts, or seeing where the agent stands. It sets the split
-  recommendation, attempts and spend.
+- **Purpose and preferences** still open under the shared [purpose guidance](../start/template/README.md#establish-the-purpose):
+  what the work should help decide or learn, relevant case selection and difficulty, and outcome
+  priorities such as success, cost or latency. Recommend an approach and explain its consequences.
+  Same-model versus as-deployed options answer comparison setup, not these questions. Resolve
+  consequential gaps before presenting the scenario selection as agreed.
+- For agent-neutral work, unresolved participants and interaction/evidence boundaries
+  ([agent-neutral](references/agent-neutral.md), *Establish the boundary before scenarios*).
+  Explain conflicts, affected tasks or claims, and recommended options before asking. Adapt
+  unsuitable defaults within scope; pause only work depending on an unresolved guarantee.
 - On first use, the harness questions still open ([harness](references/harness.md), *Ask the user*).
 - **How involved to be**, when nothing says
   ([delegated approvals](../start/template/README.md#working-with-the-user)): approve the
@@ -129,7 +151,16 @@ as an instruction, not a question. Reuse existing setup and continue work that d
 
 Unless the approval is delegated or the user chose one sitting, wait for a yes before building. Write each proposed
 test's full design to `relai/records/eval/<date>-scenarios.md` ([test-design](references/test-design.md),
-*Proposing a test*). In chat, show one compact table, in the order you recommend building: the
+*Proposing a test*, including each test's mechanism and shortcut).
+
+Before the user sees the table, have a fresh reviewer check the scenarios file against
+[review-scenarios](references/review-scenarios.md). Apply its *author fixes* findings to the
+scenarios file. Carry its *user decides* findings into the approval question, each with the
+reviewer's recommended default. When the scenario approval is delegated, this review is the
+independent approval. In a one-sitting build, run it before building all the same: it needs only
+the scenarios file and the sources.
+
+In chat, show one compact table, in the order you recommend building: the
 behavior, its source, the scenario in one line naming the real data and the trigger that makes
 it hard, what failing looks like, and its opposite-direction partner, if any. Below it, give the
 cost and time of one trial per test plus judging, in total; a yes approves that as this build's
@@ -139,9 +170,13 @@ the first few, or change the list.
 ## Preview the graders before freezing
 
 Freezing stops anyone tuning a test to the agent's results, so preview without running the agent:
-score each test's evaluators on synthetic trajectories (a passing one, a failing one that commits
-the risk's observable failure, an empty reply) and on any real recorded traces that fit the
-scenario. Write every test's full table (evaluator × case → score and the first line of
+score each test's evaluators on synthetic evidence (trajectories, artifacts, state or journals):
+a passing case, a failure of the required behavior, an empty reply, and a **shortcut**, plus real
+recorded traces that fit. The shortcut skips required behavior or a claimed risk trigger, as the
+proposal names it: acting on the first match, reading a leaked answer, or ignoring an instruction.
+It must fail the primary or affected risk check; otherwise repair the unsupported coverage claim
+or scenario before freezing. A cheap correct solution remains valid. For a behavior with an
+opposite-direction partner, also score the over-cautious strategy (always asks, never acts, refuses) on the test where acting is right. Write every test's full table (evaluator × case → score and the first line of
 feedback) to `relai/records/eval/<date>-grader-preview.md`. Size chat previews by the shared
 [decision-effort rule](../start/template/README.md#working-with-the-user), reviewing manageable
 subsets when needed while keeping the complete artifact and pending decisions visible. For the

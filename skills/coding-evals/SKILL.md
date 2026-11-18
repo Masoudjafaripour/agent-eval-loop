@@ -1,6 +1,6 @@
 ---
 name: coding-evals
-description: Build and run agent-neutral coding evals from sessions, PRs or git history for a team's coding agent, including one developed here. Measure its baseline or compare models, versions, setup changes and agents. Use eval for application-agent scenarios and harnesses.
+description: Build and run agent-neutral coding evals from sessions, PRs or git history for a team's coding agent, including one developed here. Measure its baseline or compare models, versions, setup changes and agents. Use eval for application-agent scenarios and harnesses, and for agent-neutral tasks that are not coding work, such as personal or business assistants using mail, calendars or other services.
 ---
 
 # Evals for coding agents
@@ -24,6 +24,11 @@ and the untouched code fails, and that nothing in the workspace answers; and hon
 of how each version of the agent or setup does on them.
 
 ## Pick the mode
+
+Apply the shared [purpose guidance](../start/template/README.md#establish-the-purpose) before
+selecting tasks or designing measurements. Baseline versus comparison and model/setup choices
+are separate from the decision the user wants supported, desired coverage/difficulty and outcome
+priorities. Reuse existing answers and clarify only consequential gaps.
 
 - **Scope** (first time, sized to the request; [scope](references/scope.md)) - the agent under test as the team runs it,
   source repositories, what "good" means beyond passing tests (drafted from the team's own files),
@@ -132,10 +137,14 @@ README is part of the runner's task checksum, so later comparisons would report 
 - **Comparable.** Every agent runs at a recorded version, model and authentication, on the same frozen tasks and
   attempts. Setup variants keep the request and grading logic identical; only declared setup
   baseline inputs differ ([comparing](references/comparing.md), *Setups*). Different agents are
-  compared bare or each with a matched setup, never one with
-  its setup against another without ([comparing](references/comparing.md), *Comparing agents*). Report differences as observations (`relai/README.md`, Terms).
-- **Never shape a task to an agent.** A task no version solves, or whose instruction cannot be
-  followed, is a suspected test problem: say why and ask before changing it under the *Frozen tests* rule.
+  compared under the shared comparison rules: recommend bare or matched setups for controlled
+  comparisons, and disclose intentional native setup differences for as-deployed comparisons
+  ([comparing](references/comparing.md), *Comparing agents*). Report differences as observations
+  (`relai/README.md`, Terms).
+- **Task validity.** Investigate surprising results for solvability, integration and grading.
+  Zero solves can be a valid capability result; a low score alone does not establish a test
+  defect. Do not tailor a task to force passes or failures. Changes follow the *Frozen tests*
+  rule and require the applicable approval.
 
 ## Ask the user
 

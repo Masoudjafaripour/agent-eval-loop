@@ -41,6 +41,21 @@ Use RELAI's eval skill to bring in the benchmark at {path-to-benchmark}
 
 RELAI first checks a small pilot against the benchmark's own scorer. It respects the benchmark's splits: fixes are learned from train, validation decides what is kept, and test is reserved for final assessment. The benchmark is pinned to its commit and never edited.
 
+## Compare several agents on the same evals
+
+```text
+Use RELAI's eval skill to build agent-neutral evals from {issue reports, requests
+or traces}, and compare {agent A} and {agent B} on them
+```
+
+RELAI first establishes the agents, relevant capabilities, interaction and output requirements,
+and what the comparison should decide. It recommends suitable sources and difficulty, then
+adapts the integration to that boundary. Harbor with MCP service sidecars is the default when
+existing infrastructure does not fit; native integrations and isolated real services can also
+qualify. Checks grade authentic evidence such as service state, journals, replies or artifacts;
+criteria needing a trajectory are unmeasured when it is absent. Passing and failing controls
+validate the graders before trials. See [agent-neutral tests](../skills/eval/references/agent-neutral.md).
+
 ## Use a project-native runner
 
 RELAI can reuse a suitable project or benchmark runner instead of Harbor. The integration must

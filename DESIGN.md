@@ -45,7 +45,7 @@ Project-owned copies have independent provenance and follow the template's
 | `start` | The request is routed, or needed managed state and a useful board exist | none (orientation) |
 | `discover` | Requirements, ranked falsifiable risks and open questions, every trace-derived claim cited | Risks reviewed, consequential open questions answered or deferred |
 | `trace-review` | A project-owned app for traces and source-linked feedback; findings, questions and eval review when needed | External data movement, broader hosting or consequential review decisions when not already authorized |
-| `eval` | Harness (first time), then frozen, reviewed tests that can fail and pass fairly; honest runs that show where the agent stands | Scenarios and grader preview |
+| `eval` | Harness (first time), then frozen, reviewed tests that can fail and pass fairly; honest runs that show where the agent stands. In agent-neutral mode, shared tasks and services within an agreed interaction and evidence boundary, adapting the integration when needed | Scenarios and grader preview |
 | `improve` | Direct fixes with bounded evidence, regression checks, or measured improvement against an agreed objective | Improvement agreement, unless existing instructions cover it |
 | `loop` | discover → eval → improve as new evidence arrives, with agent-chosen experiments per iteration | One agreement covers delegated decisions; measurement changes are controlled |
 | `coding-evals` | Agent-neutral tasks from real sessions, pull requests and history, validated and frozen; a baseline of the team's agent, and comparisons of changes, setups or agents when asked | Uncovered scope and task choices, then check preview; what to compare and budget before the first paid run; approvals may be delegated |
@@ -124,12 +124,15 @@ precedence.
 
 - **Frozen tests.** `freeze.py` records each test's digest before its first real trial;
   `summarize.py` reports changed or mixed identities as notices while retaining observed numeric differences. The agent judges comparability and limits its claims.
-- **Fresh-context reviews** of the harness, each test, and each delivered change, using development evidence or isolated protected assessment, against briefs
+- **Fresh-context reviews** of the harness, the proposed scenarios (before the user approves
+  them or anything is built), each test, and each delivered change, using development evidence or isolated protected assessment, against briefs
   in the skills' `references/review-*.md`.
 - **Optional held-out tests**, scored without being read for diagnosis; repeated selection on
   them is disclosed, and final assessment stays separate.
 - **The grader preview** shows the user each test's scoring on synthetic and recorded
-  trajectories before freezing, without running the agent.
+  trajectories before freezing, without running the agent, including a shortcut: the cheapest
+  strategy that skips required behavior or a claimed risk trigger, which must fail the affected
+  check. Representative cases may be easy; cheap correct solutions remain valid.
 
 ## Known limits
 
@@ -142,6 +145,5 @@ precedence.
   `tests/`.
 - Each coding task carries its own copy of the verifier library inside its frozen digest, so
   upgrading the library is a measurement change for every task that takes it.
-- Fresh-session hypothetical navigation and UX pilots have been run; real agent improvement and teammate UX remain unvalidated.
 - Recovery has documented responsibilities but no automatic reconciliation; priority suggestions
   and observed deltas are not confidence gates.

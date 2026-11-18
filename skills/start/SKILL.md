@@ -10,13 +10,18 @@ RELAI helps teams understand and improve agent behavior. Choose the smallest use
 - [discover](../discover/SKILL.md): requirements, risks and open questions from code, docs or traces.
 - [trace-review](../trace-review/SKILL.md): build or adapt a UI for traces and source-linked
   feedback, including findings, questions and eval review when needed.
-- [eval](../eval/SKILL.md): build missing evaluations, reuse a benchmark, or measure current behavior.
+- [eval](../eval/SKILL.md): build missing evaluations, reuse a benchmark, or measure current behavior;
+  in agent-neutral mode, shared tasks with services adapted to the agreed agents and boundary.
 - [improve](../improve/SKILL.md): a direct fix, regression check, or measured behavioral, cost or latency improvement.
 - [loop](../loop/SKILL.md): coordinate ongoing learning and experiments under one agreement.
 - [coding-evals](../coding-evals/SKILL.md): agent-neutral coding tasks from sessions, pull requests
   and history, including for a custom coding agent developed here.
 
 ## Route before setting up
+
+Use the shared [purpose guidance](template/README.md#establish-the-purpose) when the intended
+outcome or priorities would change routing or scope. Reuse clear intent; leave workflow-specific
+clarifications to the selected skill rather than front-loading a questionnaire.
 
 Inspect the request and existing project tests, runners and results. A deterministic fix or a
 regression check using project tests goes directly to `improve`; that handoff completes this skill

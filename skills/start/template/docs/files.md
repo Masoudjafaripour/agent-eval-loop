@@ -83,6 +83,16 @@ baseline = true                # the version other runs are compared against
 id = "team"
 path = "setups/team"         # relative to relai/
 agent = "<agent id>"         # optional: the agent whose files it is written in; matched setups share the same guidance
+
+[[agents]]                   # optional: agents run on shared service tasks (the eval skill); this example uses Harbor
+id = "<label>"
+agent = "<Harbor agent name>"  # Harbor example: passed to `harbor run -a`; check task MCP compatibility
+model = "<provider/model>"     # passed as -m
+version = "<agent release>"    # passed as --ak version=...; recorded before the first paid run
+auth = "api-key"               # or "subscription"
+env = ["<CREDENTIAL_NAME>"]    # names only
+setup = "setups/<id>"          # optional: the instruction, persona, memory or skill files installed for it
+baseline = true                # the agent the others are compared against
 ```
 
 Invalid runner kinds or isolation values are errors.
@@ -192,6 +202,76 @@ trajectory, evaluators that need one are "not recorded" and left out of the pass
 
 Missing params or hidden files are errors: the task itself is broken.
 
+### An agent-neutral task with its own services
+
+A shared service task for the agreed participants or compatibility requirements (`eval`'s
+agent-neutral mode). Reuse or adapt suitable infrastructure. The supplied Harbor implementation
+uses MCP sidecars and service journals/state. Its format below adds to the shared metadata;
+Harbor-specific fields and layout apply only when using this implementation.
+
+A native service task keeps `agent_neutral = true`, `[metadata.relai.services]` and evaluator
+definitions when using the checkers. Its integration can use other service interfaces, authorized
+isolated real services or mocks, and its own execution limits and reference-solution mechanism.
+It needs no Harbor tables, MCP configuration, Compose file, Dockerfile, shared verifier placement
+or `solution/solve.sh`. Record the actual integration and demonstrate containment, fresh trial
+state, service access, bounded execution, and grading on passing/failing evidence. Static checks
+cannot certify these runtime guarantees. Project-native formats may instead meet the shared
+contract through their own checks (`native.md`).
+
+`services.primary` names a declared evaluator: code for exact facts, or a validated judge for
+semantic success. All participants need its declared evidence for a solved-rate comparison;
+missing primary evidence leaves success unmeasured. Coding tasks retain their code primary.
+
+For the supplied Harbor layout:
+
+```toml
+[agent]
+timeout_sec = 900                    # required: Harbor has no default
+
+[[environment.mcp_servers]]          # one per service; Harbor registers them with each agent that supports it
+name = "<service>"
+transport = "streamable-http"
+url = "http://<service>:8000/mcp"    # a sidecar service in environment/docker-compose.yaml
+
+[metadata.relai]
+agent_neutral = true
+
+[metadata.relai.services]
+source = "issue"                     # issue, request, session or written
+origin = "owner/repo#1234"           # where the scenario came from
+primary = "<evaluator-id>"           # code or judge evaluator that establishes task success
+category = "<area>"
+
+[[metadata.relai.evaluators]]
+id = "<judge-evaluator-id>"
+type = "judge"
+inputs = ["verifier/mock-journal.jsonl"]   # what the agent sent, from the service journal
+# ...
+```
+
+Layout:
+
+```
+relai/tests/<id>/
+├── task.toml, instruction.md, README.md
+├── environment/
+│   ├── Dockerfile               # the agent's container: base image and any workspace; copies nothing from a sidecar
+│   ├── docker-compose.yaml      # the sidecars, with RELAI_VERIFIER_TOKEN in each service's environment
+│   └── <service>/               # a sidecar's build context: mcp_service.py, tools.json, handlers.py, state.json
+├── solution/solve.sh            # the reference solution, calling the same MCP tools; Harbor's oracle agent runs it
+└── tests/
+    ├── test.sh, verify.py       # clear /logs/verifier, then run the checks isolated (python3 -I -S)
+    ├── evaluate.py              # the plugin's helper for score files
+    ├── params.json              # each service's URL and the verifier token
+    └── judges/                  # rubrics
+```
+
+The verifier shares the agent's environment (leave `environment_mode` unset) so it can reach the
+sidecars. It reads each service's `/relai/journal` and `/relai/state` with the token, which
+arrives only with `tests/`, and copies the journal to `/logs/verifier/mock-journal.jsonl` for
+judges. The plugin's `examples/mcp_service.py` serves these endpoints. `check_task.py` checks that every MCP
+server points at a sidecar and that the agent's image copies nothing from one.
+
 ## The smoke test: `harness/smoke/`
 
 A task for the declared runner whose only job is to prove the harness works: the real agent ran,
@@ -229,12 +309,14 @@ available results using current task definitions and reports that limitation thr
 `evaluator_source` and a notice. Current bounds are not verified historical definitions.
 
 **The pass rule.** An attempt (one trial) is scored when it has a trajectory (an agent-neutral
-coding task's attempt needs none), the runner did not
-end it before grading completed, and every evaluator the test declares has a score within its
-bounds. The attempt's score is the mean, over those evaluators, of
+task's attempt needs none), the runner did not
+end it before grading completed, and every recorded evaluator has a score within its bounds.
+For agent-neutral tasks, evaluators needing an absent trajectory are "not recorded" and excluded
+from the mean; an absent primary result leaves the attempt unscored even if other checks scored.
+Errors and pending judges remain explicit. The attempt's score is the mean, over those evaluators, of
 `(score - min_score) / (max_score - min_score)`. A test passes when the mean of its scored
 attempts' scores is at or above `pass_mark`. A test with no scored attempt has not passed: report
-it apart, as a runtime failure, evaluator error or pending judge. `summarize.py` computes exactly
+it apart, as unscored, a runtime failure, evaluator error or pending judge. `summarize.py` computes exactly
 this as each test's `mean`.
 
 **Subagent judges.** With `[judge] mode = "subagent"`, judges are fresh subagents that have not
@@ -242,7 +324,7 @@ seen the run being judged or the conversation around it; one subagent may judge 
 Give each the rubric file, the criterion, the score bounds, the paths of the inputs its evaluator
 lists (the trajectory by default) and the output path `<trial dir>/judges/<id>.json`, plus the rules the example judge gives its model:
 
-- Judge only what the trajectory shows; do not assume actions that were not recorded.
+- Judge only what the declared inputs show; do not assume actions that were not recorded.
 - Score the whole relevant turn: all agent steps after a user step and before the next one.
 - Accept any wording that satisfies the rubric; do not reward or punish style it does not mention.
 - Apply criteria only where their requirements apply; incidental facts do not create obligations.
@@ -269,9 +351,11 @@ absence-based findings need a relevant observation scope rather than an invented
 ## Mocks
 
 Each mock is listed in `harness/mocks/MOCKS.md` with the dependency it replaces, its real hosts
-or functions, why, and the applicable authorization (an approval or covering agreement). A mock
+or functions, why, and the applicable authorization (an approval or covering agreement); in an
+agent-neutral task with its own services, the task's README lists its service boundaries instead. A mock
 appends one JSON line per call to
-`/logs/agent/mock-journal.jsonl` (or `agent/mock-journal.jsonl` in a native trial):
+`/logs/agent/mock-journal.jsonl` (or `agent/mock-journal.jsonl` in a native trial; a sidecar
+serves its journal to the verifier, which copies it to `/logs/verifier/mock-journal.jsonl`):
 `{"target", "operation", "input", "outcome", "response"}`, where `outcome` is `matched`,
 `unmatched` or `error`. A call that changes the mock's state also records the change as
 `state_change`. No journal means no calls.
@@ -375,7 +459,8 @@ Ratings are `low`, `medium`, `high` or `critical`. `Threatens` lists requirement
 
 Committed decision records, so teammates can see what was approved and reviewed:
 `eval/<date>-scenarios.md` and `eval/<date>-grader-preview.md` (eval builds), `reviews/` (fresh
-reviews of harnesses, tests, coding tasks and changes), `improve/` and `loop/` below. Keep them
+reviews of harnesses, proposed scenarios, tests, coding tasks and changes), `improve/` and
+`loop/` below. Keep them
 short and redacted like wiki excerpts: link to runs and traces rather than copying their content,
 and keep protected assessment contents out. Raw runs, candidates and scratch stay in `work/`.
 

@@ -17,7 +17,9 @@ Evidence, authorization, budget and measurement guarantees remain binding. Direc
 project-native regression checks need no evaluation setup. Maintain useful
 knowledge as described below. The layout below is the
 default for RELAI-managed work: reuse existing project records when they preserve the needed
-evidence, and use checker-specific formats only when using those checkers. File formats and
+evidence, and use checker-specific formats only when using those checkers. Assess whether supplied
+implementations fit; adapt or replace them within scope while demonstrating the affected guarantees.
+A limitation of a supplied checker is not a universal requirement. File formats and
 runner details are in `docs/`, read when the work touches them:
 
 | File | Read it when |
@@ -41,8 +43,10 @@ invoked) is the choice of whoever builds the tests.
    each declared evaluator yields a score within its bounds plus feedback, or an explicit error.
    Project-native records may preserve this evidence in their own format. ATIF and the bundled
    trial layout are required when using integrations or checkers that consume them (`docs/native.md`). An
-   agent-neutral coding task is scored from the workspace when a run has no trajectory (Harbor's
-   oracle, or an agent it records without one); its evaluators that need one are "not recorded".
+   agent-neutral task can be scored from workspace, service state, journals or declared output
+   artifacts when a run has no trajectory. Evaluators that need a missing trajectory are "not
+   recorded"; missing primary evidence leaves task success unmeasured. Record the evidence needed
+   for the intended claims and disclose recording limits.
 3. **Containment.** Trials are contained. Containers are the default. Host execution needs explicit authorization
    (an existing agreement may cover it) and reviewed sandboxing or simulated tool boundaries that
    prevent access to hidden tests, graders, credentials, other trials and unrelated user files,
@@ -100,6 +104,40 @@ invoked) is the choice of whoever builds the tests.
   covered improvement work; otherwise use the current improvement agreement. Do not create
   conflicting duplicate budgets.
 - **Incumbent.** The last accepted version of the agent, initially the user's code.
+
+## Comparing agents
+
+Use this guidance when comparing agents on coding tasks or tasks with services. Establish the
+participants (or compatibility requirements), task inputs, interaction lifecycle, outputs,
+permissions and observable evidence before designing affected tasks. Resolve consequential
+conflicts with options and a recommendation; continue work that does not depend on the answer.
+
+- **What is compared.** The same model helps compare harnesses; default models and native setups
+  compare products. For controlled comparisons, recommend every agent bare or with **matched
+  setups** (equivalent guidance in each agent's own files). As-deployed comparisons can include
+  different setups intentionally. Confirm intended guidance loads and disclose differences.
+- **Relevant conditions.** Hold frozen tasks, grading and relevant conditions stable except for
+  the intended differences. Match effective permissions, service access and resource budgets,
+  rather than assuming identical configuration values are equivalent. Recommend equal attempts
+  and adequate timeouts for controlled comparisons; justify intentional differences and report
+  timeouts. An agent reaching its agreed limit is a result, not automatically an infrastructure
+  failure.
+- **Capabilities and coverage.** Recommend shared-capability tasks for controlled comparisons.
+  Agree how unsupported capabilities affect product comparisons: failures of a required capability
+  or excluded tasks reported as gaps. Show eligible, attempted and scored counts per subset;
+  exclude nothing silently. The bundled summarizer reports observed attempts, so document any
+  eligibility decisions alongside it.
+- **A fair basis.** Report the primary evaluator's solved rate (full marks) with scored/attempted
+  counts. Coding tasks require a workspace code primary; service tasks may use a validated judge
+  when success is semantic. Missing primary evidence cannot establish success. Compare common
+  recorded checks and show coverage, with other checks and capability subsets reported apart.
+  An aggregate over different recorded checks does not establish a fair ranking.
+- **Cost in stated units.** Report available tokens, time and cost with recording coverage.
+  Compare dollars only on a justified common accounting basis; subscription charges cannot be
+  inferred from token pricing. Report per-trial and per-solved-task measures where meaningful.
+- **Paired evidence.** Compare task by task against a baseline (`bin/summarize.py --baseline`)
+  when useful. Report unmatched cases, selection effects and uncertainty. A larger solved rate
+  on a small or difficulty-selected suite does not establish general superiority.
 
 ## Maintain useful knowledge
 
@@ -214,8 +252,44 @@ or printing the value.
 - **Native:** the integration declares and checks its own runtime and containment (Fixed rules, *Containment*).
 - **When Harbor or a container engine is missing:** tell the user what is missing and the
   alternatives: start or install a supported engine, a native runner with authorized containment
-  (`docs/native.md`), or a hosted runner (`docs/harbor.md`). Agent-neutral coding tasks need
-  Harbor-compatible execution, locally or hosted.
+  (`docs/native.md`), or a hosted runner (`docs/harbor.md`). For the supplied Harbor service-task
+  layout, choose an environment supporting Harbor's multi-container tasks (`docker` or another
+  with Compose support). Native integrations demonstrate equivalent guarantees through their
+  own infrastructure.
+
+## Establish the purpose
+
+Before consequential case selection, measurement design or optimization, establish what the user
+wants the work to support. The evaluated agent's purpose and the user's purpose for this request
+are separate. Resolve choices that would change the work before relying on them:
+
+- **Intended use:** the decision or learning sought, such as finding weaknesses, estimating
+  everyday reliability, catching regressions, selecting a product or improving a workflow.
+  Naming agents, choosing the same model, or matching setups settles comparison conditions;
+  those choices alone do not establish the intended use.
+- **Selection:** the relevant task distribution, representative coverage, known failures,
+  realistic difficult probes or an agreed mixture. Explain how sources and difficulty serve
+  the intended use. Do not present a failure-selected suite as typical performance or promise
+  that a difficult task will fail before measuring it.
+- **Outcomes and priorities:** task success (state whether solved rate, all-check pass rate or
+  another criterion), specific behavior, safety, cost, latency or another relevant measure.
+  Establish which drive the decision, which are guardrails, and which are informational. A
+  budget for conducting evaluation does not establish a preference for cheaper agent operation.
+  Do not invent weights or resolve an uncovered tradeoff for the user.
+
+Inspect the request, evidence and existing agreements first. Ask only about consequential gaps,
+with a recommendation and its effect on the approach; use the interaction guidance below. Record
+inferred choices as assumptions rather than user-confirmed decisions. A clear deterministic fix
+needs no unrelated questionnaire. Exploration can leave later choices explicitly open while
+settling what the exploration should learn; pause only dependent work.
+
+Carry the answers into sources, scenarios, instrumentation, sampling, acceptance and reporting.
+For relevant cost or latency comparisons, define the boundary before dependent measurements:
+agent work versus setup/judging overhead, per attempt versus per solved task, and the response
+or completion time that matters. Use available recorded metrics, disclose gaps and limit claims
+when the requested measure is unavailable. Reuse existing decision records and agreements; no
+additional form is required. Scenario approval or reviewer delegation does not settle an
+uncovered user preference.
 
 ## Working with the user
 

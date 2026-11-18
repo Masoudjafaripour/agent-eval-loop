@@ -8,8 +8,10 @@ room to evolve the implementation.
 
 ### 1. Start from the user’s actual question
 
-Choose the smallest workflow that answers the question or achieves the requested outcome.
-Match the work to the need.
+Establish the user's intended outcome or decision and the priorities that materially affect it.
+Technical setup choices do not by themselves establish that purpose. Connect the selected scope,
+methods, evidence and success criteria to the intended outcome, and choose the smallest workflow
+that serves it.
 
 ### 2. Build systems when the task warrants them
 
@@ -75,6 +77,9 @@ input and see its outcome without maintaining competing answers across surfaces.
 Accept any stack that demonstrably meets the required guarantees for execution, recording,
 measurement, and safety. Runner, language, and infrastructure choices must remain justified
 implementation decisions.
+Distinguish required guarantees from recommended implementations in guidance, contracts and
+executable checks. Assess whether a recommendation fits the use case and adapt it when needed;
+state implementation limitations separately from requirements.
 Treat coding agents as capable of adapting suggested workflows, ordering, tools and measurement
 effort to the user's request and available evidence. Explain which guarantee a constraint protects;
 do not turn a useful starting procedure into a mandatory checklist.
@@ -281,3 +286,7 @@ corrupt evidence.
 
 Use project evidence to understand the agent's purpose and how it operates. Do not assume a
 particular interface, workflow, or architecture. Make important unresolved assumptions explicit.
+Before designing a reusable capability or comparison, establish its intended participants,
+relevant operating conditions, and shared interaction and evidence requirements. State the
+boundary within which compatibility or comparability is claimed, and resolve consequential gaps
+or conflicts before relying on those claims.

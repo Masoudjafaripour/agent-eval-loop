@@ -4,8 +4,10 @@ How to design each test for the `eval` skill, whose Rules bind; this adds the me
 
 ## Rules
 
-- Reuse `relai/harness/`. A test adds its scenario, inputs and evaluators; it does not redefine
-  how the agent runs. If the harness cannot support the test, fix the harness under [harness](harness.md) and rerun the smoke test (`relai/harness/smoke/`). Never write agent tests there.
+- Reuse the selected integration (`relai/harness/` when used). A test adds its scenario, inputs
+  and evaluators; shared execution behavior stays in the integration. If it cannot support the
+  test, repair it under [harness](harness.md) and rerun its smoke test (`relai/harness/smoke/`
+  when used). Never use the smoke test as an agent-quality eval.
 - Use a behavior-class scenario for a general expectation and an exact instance when the request,
   trace or value itself is the point.
 - From a failed run plus feedback: keep the original input faithful and put the lesson in the
@@ -16,11 +18,12 @@ How to design each test for the `eval` skill, whose Rules bind; this adds the me
   reply may pass it; show it can fail on a synthetic violating example instead.
 - When the recording lacks the structure a check reads, let the check raise (an error), never
   score it as zero.
-- Use a simulated user (a model playing the user) when the behavior depends on how a user
-  responds. Check valid alternative paths, including proactive answers, against the user's goal
-  and the intended challenge. Do not require an incidental dialogue sequence when equivalent
-  behavior exercises the same challenge. If the challenge was not exercised, report that limit
-  rather than treating completion alone as evidence of the capability.
+- When behavior depends on a user's response, use an interaction channel matching real use.
+  Script fixed decisions; use a simulated user when replies must respond to the question.
+  Check valid alternative paths, including proactive answers, against the user's goal and the
+  intended challenge. Do not require an incidental dialogue sequence when equivalent behavior
+  exercises the same challenge. If the challenge was not exercised, report that limit rather
+  than treating completion alone as evidence of the capability.
 - Run and score tests as [eval: measure](measure.md) describes.
 
 ## Ask the user
@@ -153,9 +156,18 @@ evaluator, not as constants in its code. Another test of the same shape can then
 For scenario approval, write each proposed test's full design to the scenarios file: its source (a risk, a
 requirement, the user's feedback on a run, a triage gap with how many real runs it stands for, a
 compound of named signals or tests, or a harder rung of an existing test); the risks and
-requirements it covers; the scenario, naming the real data it uses; the trigger that makes it
-hard; what passing and failing look like; its opposite-direction partner, if any; its split; and
-what would make the probe invalid.
+requirements it covers; the scenario, naming the real data it uses; relevant operating conditions
+and intended difficulty; what passing and failing look like; its opposite-direction partner, if
+any; its split; and what would make the probe invalid. Link to the agreed purpose, selection and
+outcome priorities in the existing records, explaining how this case contributes. Also state:
+
+- **The mechanism:** for a failure or difficult probe, why the source failed or the risk is
+  plausible, and evidence that this scenario can trigger it. For ordinary coverage, state the
+  behavior exercised without inventing a failure mechanism. Narrow unsupported coverage claims.
+- **The shortcut:** a strategy that skips required behavior or a claimed risk trigger, and why
+  the affected evaluator fails it. The grader preview scores it ([eval](../SKILL.md), *Preview
+  the graders before freezing*). A cheap correct solution is valid; do not add artificial
+  difficulty simply to make it fail.
 
 When the request calls for coverage of a defined set of behaviors or findings, account for each
 within the agreed scope with a scenario that exercises it and an observable passing/failing
